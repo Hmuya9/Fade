@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+// import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "./db";
 import { logger } from "./logger";
 
@@ -12,6 +12,20 @@ export interface CurrentUser {
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
+    // Check if Clerk is configured
+    if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) {
+      logger.warn("Clerk not configured, returning mock user");
+      return {
+        id: 'mock-user-id',
+        role: 'CLIENT',
+        email: 'demo@example.com',
+        name: 'Demo User',
+      };
+    }
+
+    // Import Clerk functions dynamically
+    const { auth, currentUser } = await import("@clerk/nextjs/server");
+    
     const { userId } = await auth();
     
     if (!userId) {
