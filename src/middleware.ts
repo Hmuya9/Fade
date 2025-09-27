@@ -1,24 +1,37 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { authMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher([
-  "/admin(.*)",
-  "/barber(.*)",
-]);
-
-export default clerkMiddleware((auth, req) => {
-  const { userId } = auth();
-  const { pathname } = req.nextUrl;
+export default authMiddleware({
+  // Routes that can be accessed while signed out
+  publicRoutes: [
+    "/",
+    "/plans",
+    "/booking",
+    "/api/webhooks/stripe",
+    "/api/subscription-plans",
+  ],
   
-  // Handle protected routes
-  if (isProtectedRoute(req) && !userId) {
-    // Redirect to sign-in with return URL
-    const signInUrl = new URL("/sign-in", req.url);
-    signInUrl.searchParams.set("redirect_url", pathname);
-    return NextResponse.redirect(signInUrl);
-  }
+  // Routes that can always be accessed, and have
+  // no authentication information
+  ignoredRoutes: [
+    "/api/webhooks/stripe",
+    "/api/subscription-plans",
+  ],
   
-  return NextResponse.next();
+  afterAuth: (auth, req) => {
+    const { userId } = auth;
+    const { pathname } = req.nextUrl;
+    
+    // Handle protected routes
+    if ((pathname.startsWith("/admin") || pathname.startsWith("/barber")) && !userId) {
+      // Redirect to sign-in with return URL
+      const signInUrl = new URL("/sign-in", req.url);
+      signInUrl.searchParams.set("redirect_url", pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+    
+    return NextResponse.next();
+  },
 });
 
 export const config = {
